@@ -10,7 +10,7 @@ import sqlite3
 def create_catalog_with_schema(catalog_path, schema_file):
     conn = sqlite3.connect(catalog_path)
     c = conn.cursor()
-    # TODO...
+    # TODO... we depend on predefined schema models now
 
 
 if __name__ == "__main__":
