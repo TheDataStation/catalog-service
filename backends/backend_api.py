@@ -7,16 +7,30 @@ from backends.schema_models import *
 
 # TODO: come back and replace this with the command line option
 # from the user who starts the catalog service
+
 class Backend(object):
 
     def put(self, schema_id, content):
         pass
 
-    def get(self, schema_id, filters):
+    def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+        """
+        Query backends with filters connected by "AND" semantic.
+        :param ins_name: schema ins name
+        :param id: set filter
+        :param item_id:  set filter
+        :param asset_id:  set filter
+        :param timestamp:  range filter
+        :param name: set filter
+        :param version: range filter
+        :param sub_schema:  provides JSON full text search
+        :return:
+        """
         pass
 
-    def delete(self, schema_id, filters):
+    def delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         pass
+
 
 class SQLiteBackend(Backend):
 
@@ -30,14 +44,75 @@ class SQLiteBackend(Backend):
     def put(self, ins_name, content):
         return self.get_ins(ins_name).insert(content).execute()
 
-    def get(self, ins_name, filters):
-        return self.get_ins(ins_name).select().where(filters)
+    def get(self,ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+        sql = self.build_sql(ins_name, "query", id, item_id, asset_id, timestamp, name, version, sub_schema)
+        print(sql)
+        return list(sql.dicts())
 
-    def get(self, ins, filters):
-        return ins.select().where(filters)
+    def delete(self,ins_name, id: (int, ...) = None,  item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+        sql = self.build_sql(ins_name, "delete", id, item_id, asset_id, timestamp, name, version)
+        print(sql)
+        return sql.execute()
 
-    def delete(self, ins_name, filters):
-        return self.get_ins(ins_name).delete().where(filters)
+    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+
+        global sql
+        ins = self.get_ins(ins_name)
+        if sql_type == "query":
+            sql = ins.select().distinct()
+        elif sql_type == "delete":
+            sql = ins.delete()
+
+        if sub_schema is not None:
+            kd = ins.schema.tree().alias('tree')
+            sql = sql.from_(ins, kd)
+            expr = False
+            for k,v in sub_schema.items():
+                if k == "*":
+                    for wildcard_v in v:
+                        expr |= (kd.c.value == wildcard_v)
+                elif v == "*":
+                    expr |= (kd.c.key == k)
+                else:
+                    expr |= ((kd.c.key == k) & (kd.c.value == v))
+            sql = sql.where(expr)
+
+        if id is not None:
+            expr = False
+            for i in id:
+                expr |= (ins.id == i)
+            sql = sql.where(expr)
+        if item_id is not None:
+            expr = False
+            for i in item_id:
+                expr |= (ins.item_id == i)
+            sql = sql.where(expr)
+        if asset_id is not None:
+            expr = False
+            for i in asset_id:
+                expr |= (ins.asset_id == i)
+            sql = sql.where(expr)
+        if timestamp is not None:
+            expr = True
+            if timestamp[0] is not None:
+                expr &= (ins.timestamp >= timestamp[0])
+            if timestamp[1] is not None:
+                expr &= (ins.timestamp < timestamp[1])
+            sql = sql.where(expr)
+        if name is not None:
+            expr = False
+            for i in name:
+                expr |= (ins.name == i)
+            sql = sql.where(expr)
+            pass
+        if version is not None:
+            expr = True
+            if version[0] is not None:
+                expr &= (ins.version >= version[0])
+            if version[1] is not None:
+                expr &= (ins.version < version[1])
+            sql = sql.where(expr)
+        return sql
 
     def get_ins(self, ins_name):
         return self.ins_map[ins_name]
@@ -68,6 +143,7 @@ class SQLiteBackend(Backend):
             self.profile_ins_map["HowProfile"] = HowProfile
             self.profile_ins_map["WhyProfile"] = WhyProfile
             self.profile_ins_map["WhenProfile"] = WhenProfile
+
 
 if __name__ == "__main__":
     pass

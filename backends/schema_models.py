@@ -3,6 +3,7 @@ Schema Models are core data structure of Catalog Service. They will be mapped to
 """
 
 from peewee import *
+from playhouse.sqlite_ext import *
 
 ## Schema Models
 
@@ -28,7 +29,7 @@ class User(BaseModel):
     name = TextField()
     item = ForeignKeyField(Item, backref='user_item')
     user_type = ForeignKeyField(UserType, backref='user_type')
-    schema = TextField()
+    schema = JSONField()
 
 
 class AssetType(BaseModel):
@@ -46,31 +47,30 @@ class WhoProfile(BaseModel):
     item = ForeignKeyField(Item, backref='who_item')
     asset = ForeignKeyField(Asset, backref='who_asset')
     user = ForeignKeyField(User, backref='who_user')
-    schema = TextField()
+    schema = JSONField()
 
 
 class WhatProfile(BaseModel):
     item = ForeignKeyField(Item, backref='what_item')
     asset = ForeignKeyField(Asset, backref='what_asset')
-    schema = TextField()
+    schema = JSONField()
 
 
 class HowProfile(BaseModel):
     item = ForeignKeyField(Item, backref='how_item')
     asset = ForeignKeyField(Asset, backref='how_asset')
-    schema = TextField()
+    schema = JSONField()
 
 
 class WhyProfile(BaseModel):
     item = ForeignKeyField(Item, backref='why_item')
     asset = ForeignKeyField(Asset, backref='why_asset')
-    schema = TextField()
+    schema = JSONField()
 
 
 class WhenProfile(BaseModel):
     item = ForeignKeyField(Item, backref='when_item')
     asset = ForeignKeyField(Asset, backref='when_asset')
-    schema = TextField()  # Missing schema field here?
     asset_timestamp = DateTimeField()
     expiry_date = DateTimeField()
     start_date = DateTimeField()
@@ -85,7 +85,7 @@ class SourceType(BaseModel):
 class Source(BaseModel):
     name = TextField()
     source_type = ForeignKeyField(SourceType, backref='source_type')
-    schema = TextField()
+    schema = JSONField()
 
 
 class WhereProfile(BaseModel):

@@ -2,6 +2,8 @@
 Catalog service API -- all functionality is offered via this module. This module is designed so that it's accessed
 via one of the frontends available
 """
+import json
+
 
 class CatalogService:
 
@@ -51,23 +53,34 @@ class CatalogService:
         """
         return self.bk.put(ins_name, content)
 
-    def get(self, ins_name, filters):
+    def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Low-level get with filters
         :param ins_name:
-        :param filters:
+        :param id:
+        :param item_id:
+        :param asset_id:
+        :param timestamp:
+        :param name:
+        :param version:
+        :param sub_schema:
         :return:
         """
-        return self.bk.get(ins_name, filters)
+        return self.bk.get(ins_name, id, item_id, asset_id, timestamp, name, version, sub_schema)
 
-    def delete(self, ins_name, filters):
+    def delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         """
         Low-level delete with filters
         :param ins_name:
-        :param filters:
+        :param id:
+        :param item_id:
+        :param asset_id:
+        :param timestamp:
+        :param name:
+        :param version:
         :return:
         """
-        return self.bk.delete(ins_name, filters)
+        return self.bk.delete(ins_name, id, item_id, asset_id, timestamp, name, version)
 
     def search_by_keywords(self, keywords):
         """
@@ -78,55 +91,35 @@ class CatalogService:
 
         # TODO synchronize possible keywords to ES to speed up search
         # current simple version run search loops among some core schemas' fields
-
-        related_profiles = {k: [] for k in self.bk.profile_ins_map.keys()}
+        related_profiles = {"WhoProfile": {},"WhatProfile": {},"HowProfile": {},"WhyProfile": {}}
         item_set = set()
-        for word in keywords.split():
-            ins = self.bk.get_ins("User")
-            item_set.update(
-                [user.item for user in self.get(ins, (ins.name.contains(word) or ins.schema.contains(word)))])
-            ins = self.bk.get_ins("Asset")
-            item_set.update([asset.item for asset in self.get(ins, ins.name.contains(word))])
-
-            user = self.bk.get_ins("User")
-            usertype = self.bk.get_ins("UserType")
-            item_set.update([i.item for i in user.select().join(usertype).where(
-                usertype.name.contains(word) or usertype.description.contains(word))])
-
-            for k in related_profiles.keys():
-                ins = self.bk.get_ins(k)
-                related_profiles[k] += list(
-                    self.get(ins, (ins.item in item_set or ins.schema.contains(
-                        word))).dicts())  # whether we need to further search the timestamps in WhenProfile?
-
+        words = tuple(keywords.split())
+        item_set.update([_.get("item") for _ in self.get("User", name=words)])
+        item_set.update([_.get("item") for _ in self.get("Asset", name=words)])
+        for profile_name in related_profiles.keys():
+            for profile in self.get(profile_name, item_id = tuple(item_set)): related_profiles[profile_name][str(profile["id"])] = profile
+            for profile in self.get(profile_name, sub_schema={"*": words}): related_profiles[profile_name][str(profile["id"])] = profile
         return related_profiles
 
-    def get_profiles(self, ins_name=None, item_id=None, asset_id=None):
+    def get_profiles(self, profile_name, item_id=None, asset_id=None, sub_schema=None):
         """
         Users could get profiles by filters
-        :param profile_type:
+        :param profile_name:
         :param item_id:
         :param asset_id:
-        :return: profiles in json format
-        """
-        ret = {}
-        if not ins_name:
-            profiles = {ins_name: self.bk.get_ins(ins_name)}
-        else:
-            profiles = self.bk.profile_ins_map
-        for ins_name, ins in profiles.items():
-            ret[ins_name] = list(self.get(ins, (not item_id or ins.item == item_id) and (
-                        not asset_id or ins.asset == asset_id)).dicts())
-        return ret
-
-    def insert_profile(self, ins_name, profile):
-        """
-        Users could insert profiles with json
-        :param profile_type:
-        :param profile:
+        :param sub_schema:
         :return:
         """
-        return self.put(ins_name, profile)
+        return self.get(profile_name,item_id,asset_id,sub_schema)
+
+    def insert_profile(self, profile_name, content):
+        """
+        Users could insert profiles with json
+        :param profile_name:
+        :param content:
+        :return:
+        """
+        return self.put(profile_name, content)
 
 
 if __name__ == "__main__":
