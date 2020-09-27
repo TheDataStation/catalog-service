@@ -1,11 +1,14 @@
 import argparse
-from backends import backend_api as bk
-from catserv_api import CatalogService
+from backends.backend_api import SQLiteBackend
+from backends.catserv_api import CatalogService
 
+def create_backend(catalog_path="catserv.db", catalog_type="sqlite"):
+    if catalog_type == "sqlite":
+        return SQLiteBackend(catalog_path)
 
 def create_api(catalog_type, catalog_path):
     # create backend
-    catalog = bk.create_catalog_type(catalog_type, catalog_path)
+    catalog = create_backend(catalog_type, catalog_path)
     # compose backend into main catalog service API
     return CatalogService(catalog)
 
