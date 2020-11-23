@@ -52,7 +52,9 @@ class CatalogService:
         :return:
         """
         return self.bk.put(ins_name, content)
-
+    
+    #TODO: Why do we have item_id here? How would a user ever query anything
+    #using its item_id?
     def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Low-level get with filters
@@ -66,8 +68,11 @@ class CatalogService:
         :param sub_schema:
         :return:
         """
-        return self.bk.get(ins_name, id, item_id, asset_id, timestamp, name, version, sub_schema)
-
+        #return self.bk.get(ins_name, id, item_id, asset_id, timestamp, name, version, sub_schema)
+        return self.bk.get(ins_name, id, asset_id, timestamp, name, version, sub_schema)
+    
+    #TODO: Why do we have item_id here? How would a user ever delete anything
+    #using its item_id?
     def delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         """
         Low-level delete with filters

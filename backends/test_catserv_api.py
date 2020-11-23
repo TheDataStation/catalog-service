@@ -1,8 +1,10 @@
 import unittest
 
-from backends.backend_api import SQLiteBackend
+from backends.backend_api import NormalizedSQLiteBackend
 from backends.catserv_api import CatalogService
 import os
+import cProfile, pstats
+import io
 
 test_db_name = "test_catserv.db"
 
@@ -11,7 +13,7 @@ class TestCatalogService(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.cs = CatalogService(SQLiteBackend(test_db_name))
+        cls.cs = CatalogService(NormalizedSQLiteBackend(test_db_name))
         cls.cs.insert_profile("User", {"name": "admin", "user_type": 1, "item": 1, "schema": {"addr":{"home":"westlake","company":"bank"},"phone":1234567}})
         cls.cs.insert_profile("Item", {"version": 2, "timestamp": "2020-09-16", "user": 1})
         cls.cs.insert_profile("Item", {"version": 1, "timestamp": "2020-08-16", "user": 1})
@@ -36,4 +38,15 @@ class TestCatalogService(unittest.TestCase):
 
 
 if __name__ == '__main__':
+     #cProfile.run('unittest.main()', 'test_catserve_profile.txt')
+    pr = cProfile.Profile()
+    pr.enable()
     unittest.main()
+    pr.disable()
+    s = io.StringIO()
+    ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
+    ps.print_stats()
+    with open('test_catserve_profile.txt', 'w+') as f:
+        f.write(s.getvalue())
+
+    
