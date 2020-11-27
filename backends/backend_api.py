@@ -37,7 +37,7 @@ class NormalizedBackend(Backend):
         pass
     
     def put(self, schema_id, content):
-        self.normalized_put(schema_id, content)
+        return self.normalized_put(schema_id, content)
     
     def normalized_get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
@@ -248,7 +248,8 @@ class NormalizedSQLiteBackend(NormalizedBackend):
                                     Asset, WhoProfile, WhatProfile,
                                     HowProfile, WhyProfile, WhenProfile,
                                     SourceType, Source, WhereProfile, 
-                                    Action, RelationshipType, Relationship])
+                                    Action, RelationshipType, Relationship,
+                                    Asset_Relationships])
             # Item.__schema.create_foreign_key(Item.user)
             #self.ins_map["Item"] = Item
             self.ins_map["UserType"] = UserType
@@ -266,6 +267,7 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             self.ins_map["Action"] = Action
             self.ins_map["RelationshipType"] = RelationshipType
             self.ins_map["Relationship"] = Relationship
+            self.ins_map['Asset_Relationships'] = Asset_Relationships
             self.profile_ins_map["WhoProfile"] = WhoProfile
             self.profile_ins_map["WhatProfile"] = WhatProfile
             self.profile_ins_map["HowProfile"] = HowProfile

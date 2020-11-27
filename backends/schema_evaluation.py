@@ -48,7 +48,7 @@ class Schema_Evaluation:
     
     def convert_to_pd(self, datafile, trim_num):
         df = pd.read_csv(datafile, 
-                     delimiter=',', nrows=trim_num,
+                     delimiter=',', chunksize=trim_num,
                      dtype={'url' : str, 'name' : str,
                'alternateName' : str,
                'description' : str,
@@ -65,7 +65,7 @@ class Schema_Evaluation:
                'provider' : str,
                'funder' : str,
                'temporalCoverage' : str})
-        print(df.shape)
+        #print(df.shape)
         return df
     
     def init_NSQLsetup(self):
@@ -74,11 +74,19 @@ class Schema_Evaluation:
                                      "version": 1, "timestamp" : str(datetime.datetime.now()),
                                      "schema": {"addr":{"home":"westlake","company":"bank"},"phone":1234567}})
     
-    def insert_data_normalized_SQLite(self):
+    def insert_data_normalized_SQLite(self, chunk):
+        insertedAssetType = False
+        insertedRelType = False
+        insertedSourceType = False
         self.init_NSQLsetup()
-        for index, row in self.df.iterrows():
+        #convert all nan's to nulls
+        chunk = chunk.fillna('NULL')
+        
+        for index, row in chunk.iterrows():
             for key in self.concept_map:
                 i_val = row[key]
+                if i_val == 'NULL':
+                    continue
                 #I guess we're really doing this...
                 #just implement the 17 insert queries...
                 if key == 'url':
@@ -89,7 +97,6 @@ class Schema_Evaluation:
                                                        'timestamp' : str(datetime.datetime.now()),
                                                        'user' : 1,
                                                        'asset' : self.asset_idx})
-                    self.asset_idx += 1
                     self.inserts.append({'WhereProfile' : {'access_path': i_val, 
                                                        'configuration' : None, 
                                                        'source' : None, 
@@ -97,11 +104,361 @@ class Schema_Evaluation:
                                                        'timestamp' : str(datetime.datetime.now()),
                                                        'user' : 1,
                                                        'asset' : self.asset_idx}})
+                elif key == 'name':
+                    if insertedAssetType:
+                        self.normSQL.insert_profile('Asset' , {'name' : i_val,
+                                                           'asset_type' : 1,
+                                                           'version' : self.version,
+                                                           'timestamp' : str(datetime.datetime.now()),
+                                                           'user' : 1})
+                        self.inserts.append({'Asset' : {'name' : i_val,
+                                                           'asset_type' : 1,
+                                                           'version' : self.version,
+                                                           'timestamp' : str(datetime.datetime.now()),
+                                                           'user' : 1}})
+                    else:
+                        #in this case, there's only one asset type, and that's an image
+                        self.normSQL.insert_profile('AssetType', {'name' : 'Image',
+                                                                  'description' : 'A file consisting of bytes that represent pixels'})
+                        self.inserts.append({'AssetType' : {'name' : 'Image',
+                                                                  'description' : 'A file consisting of bytes that represent pixels'}})
+                        insertedAssetType = True
+                        self.normSQL.insert_profile('Asset', {'name' : i_val,
+                                                           'asset_type' : 1,
+                                                           'version' : self.version,
+                                                           'timestamp' : str(datetime.datetime.now()),
+                                                           'user' : 1})
+                        self.inserts.append({'Asset' : {'name' : i_val,
+                                                           'asset_type' : 1,
+                                                           'version' : self.version,
+                                                           'timestamp' : str(datetime.datetime.now()),
+                                                           'user' : 1}})
+                elif key == 'description':
+                    self.normSQL.insert_profile('WhatProfile', {'schema' : {'instanceMeaning' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx})
+                    self.inserts.append({'WhatProfile' : {'schema' : {'instanceMeaning' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx}})
+                elif key == 'variablesMeasured':
+                    #print("i_val is: " + str(i_val))
+                    print(i_val)
+                    self.normSQL.insert_profile('WhatProfile', {'schema' : {'variablesRecorded' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx})
+                    self.inserts.append({'WhatProfile' : {'schema' : {'variablesRecorded' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx}})
+                elif key == 'measurementTechnique':
+                    self.normSQL.insert_profile('HowProfile', {'schema' : {'measurementTechnique' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx})
+                    self.inserts.append({'HowProfile' : {'schema' : {'measurementTechnique' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx}})
+                elif key == 'sameAs':
+                    #NOTE: this part highlights a very important problem the catalog service
+                    #will have to do its best to solve: when we're only told that there should
+                    #be a relationship between assets, but we're not given clear links to each,
+                    #how do we establish the relationship? We need to find the asset that matches
+                    #the user's descriptions, otherwise our relationship schema won't be useful.
+                    if insertedRelType:
+                        rel_key = self.normSQL.insert_profile('Relationship', {'schema' : {'sameImageAs' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'relationship_type' : 1})
+                        self.inserts.append({'Relationship' : {'schema' : {'sameImageAs' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'relationship_type' : 1}})
+                        
+                        if rel_key == None:
+                            print("Rel_key is None!")
+                            print(i_val)
+                        
+                        self.normSQL.insert_profile('Asset_Relationships',
+                                                    {'asset' : self.asset_idx,
+                                                     'relationship' : rel_key})
+                        
+                        self.inserts.append({'Asset_Relationships' :
+                                                    {'asset' : self.asset_idx,
+                                                     'relationship' : rel_key}})
+                    else:
+                        self.normSQL.insert_profile('RelationshipType', {'name' : 'Identical Images', 
+                                                                         'description' : 'The images are of exactly the same thing.'})
+                        self.inserts.append({'RelationshipType' : {'name' : 'Identical Images', 
+                                                                         'description' : 'The images are of exactly the same thing.'}})
+                        insertedRelType = True
+                        rel_key = self.normSQL.insert_profile('Relationship', {'schema' : {'sameImageAs' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'relationship_type' : 1})
+                        self.inserts.append({'Relationship' : {'schema' : {'sameImageAs' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'relationship_type' : 1}})
+                        
+                        if rel_key == None:
+                            print("Rel_key is None!")
+                            print(i_val)
+                        
+                        self.normSQL.insert_profile('Asset_Relationships',
+                                                    {'asset' : self.asset_idx,
+                                                     'relationship' : rel_key})
+                        
+                        self.inserts.append({'Asset_Relationships' :
+                                                    {'asset' : self.asset_idx,
+                                                     'relationship' : rel_key}})
+                        
+                elif key == 'doi':
+                    if insertedSourceType:
+                        #we know there's only one kind of source here
+                        #but the question is: should we assume every row comes from a distinct source,
+                        #or should we assume they all come from the same source?
+                        #again, if the name is all that's given, we don't know
+                        #...let's assume they're all different
+                        source_key = self.normSQL.insert_profile('Source', {'name' : 'PNG Repository',
+                                                               'source_type' : 1,
+                                                               'schema' : {'doi' : i_val},
+                                                               'user' : 1,
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now()})
+                        self.normSQL.insert_profile('WhereProfile', {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx})
+                        self.inserts.append({'WhereProfile' : {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx}})
+                    else:
+                        self.normSQL.insert_profile('SourceType', {'connector' : 'web browser',
+                                                                   'serde' : 'PNG',
+                                                                   'datamodel' : 'Regular Image'})
+                        self.inserts.append({'SourceType' : {'connector' : 'web browser',
+                                                                   'serde' : 'PNG',
+                                                                   'datamodel' : 'Regular Image'}})
+                        insertedSourceType = True
+                        source_key = self.normSQL.insert_profile('Source', {'name' : 'PNG Repository',
+                                                               'source_type' : 1,
+                                                               'schema' : {'doi' : i_val},
+                                                               'user' : 1,
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now()})
+                        self.normSQL.insert_profile('WhereProfile', {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx})
+                        self.inserts.append({'WhereProfile' : {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx}})
+                    
+                elif key == 'identifier':
+                    if insertedSourceType:
+                        #we know there's only one kind of source here
+                        #but the question is: should we assume every row comes from a distinct source,
+                        #or should we assume they all come from the same source?
+                        #again, if the name is all that's given, we don't know
+                        #...let's assume they're all different
+                        source_key = self.normSQL.insert_profile('Source', {'name' : 'PNG Repository',
+                                                               'source_type' : 1,
+                                                               'schema' : {'identifier' : i_val},
+                                                               'user' : 1,
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now()})
+                        self.normSQL.insert_profile('WhereProfile', {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx})
+                        self.inserts.append({'WhereProfile' : {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx}})
+                    else:
+                        self.normSQL.insert_profile('SourceType', {'connector' : 'web browser',
+                                                                   'serde' : 'PNG',
+                                                                   'datamodel' : 'Regular Image'})
+                        self.inserts.append({'SourceType' : {'connector' : 'web browser',
+                                                                   'serde' : 'PNG',
+                                                                   'datamodel' : 'Regular Image'}})
+                        insertedSourceType = True
+                        source_key = self.normSQL.insert_profile('Source', {'name' : 'PNG Repository',
+                                                               'source_type' : 1,
+                                                               'schema' : {'identifier' : i_val},
+                                                               'user' : 1,
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now()})
+                        self.normSQL.insert_profile('WhereProfile', {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx})
+                        self.inserts.append({'WhereProfile' : {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx}})
+                elif key == 'author':
+                    self.normSQL.insert_profile('WhoProfile', {'schema' : {'author' : i_val},
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now(),
+                                                               'write_user' : 1,
+                                                               'asset' : self.asset_idx})
+                    self.inserts.append({'WhoProfile' : {'schema' : {'author' : i_val},
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now(),
+                                                               'write_user' : 1,
+                                                               'asset' : self.asset_idx}})
+                elif key == 'isAccessibleForFree':
+                    if insertedSourceType:
+                        #we know there's only one kind of source here
+                        #but the question is: should we assume every row comes from a distinct source,
+                        #or should we assume they all come from the same source?
+                        #again, if the name is all that's given, we don't know
+                        #...let's assume they're all different
+                        source_key = self.normSQL.insert_profile('Source', {'name' : 'PNG Repository',
+                                                               'source_type' : 1,
+                                                               'schema' : {'isAccessibleForFree' : i_val},
+                                                               'user' : 1,
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now()})
+                        self.normSQL.insert_profile('WhereProfile', {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx})
+                        self.inserts.append({'WhereProfile' : {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx}})
+                    else:
+                        self.normSQL.insert_profile('SourceType', {'connector' : 'web browser',
+                                                                   'serde' : 'PNG',
+                                                                   'datamodel' : 'Regular Image'})
+                        self.inserts.append({'SourceType' : {'connector' : 'web browser',
+                                                                   'serde' : 'PNG',
+                                                                   'datamodel' : 'Regular Image'}})
+                        insertedSourceType = True
+                        source_key = self.normSQL.insert_profile('Source', {'name' : 'PNG Repository',
+                                                               'source_type' : 1,
+                                                               'schema' : {'isAccessibleForFree' : i_val},
+                                                               'user' : 1,
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now()})
+                        self.normSQL.insert_profile('WhereProfile', {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx})
+                        self.inserts.append({'WhereProfile' : {'source' : source_key,
+                                                                     'version' : self.version,
+                                                                     'timestamp' : datetime.datetime.now(),
+                                                                     'user' : 1,
+                                                                     'asset' : self.asset_idx}})
+                elif key == 'dateModified':
+                    self.normSQL.insert_profile('WhenProfile', {'asset_timestamp' : i_val,
+                                                                'version' : self.version,
+                                                                'timestamp' : datetime.datetime.now(),
+                                                                'user' : 1,
+                                                                'asset' : self.asset_idx})
+                    self.inserts.append({'WhenProfile' : {'asset_timestamp' : i_val,
+                                                                'version' : self.version,
+                                                                'timestamp' : datetime.datetime.now(),
+                                                                'user' : 1,
+                                                                'asset' : self.asset_idx}})
+                elif key == 'distribution':
+                    self.normSQL.insert_profile('WhereProfile', {'configuration' : {'distribution' : i_val},
+                                                                 'version' : self.version,
+                                                                 'timestamp' : datetime.datetime.now(),
+                                                                 'user' : 1,
+                                                                 'asset' : self.asset_idx})
+                    self.inserts.append({'WhereProfile' : {'configuration' : {'distribution' : i_val},
+                                                           'version' : self.version,
+                                                           'timestamp' : datetime.datetime.now(),
+                                                           'user' : 1,
+                                                           'asset' : self.asset_idx}})
+                elif key == 'spatialCoverage':
+                    self.normSQL.insert_profile('WhatProfile', 
+                                                {'schema' : {'spatialCoverage' : i_val},
+                                                 'version' : self.version,
+                                                 'timestamp' : datetime.datetime.now(),
+                                                 'user' : 1,
+                                                 'asset' : self.asset_idx})
+                    self.inserts.append({'WhatProfile' : {'schema' : {'spatialCoverage' : i_val},
+                                                 'version' : self.version,
+                                                 'timestamp' : datetime.datetime.now(),
+                                                 'user' : 1,
+                                                 'asset' : self.asset_idx}})
+                elif key == 'provider':
+                    self.normSQL.insert_profile('WhoProfile', {'schema' : {'provider' : i_val},
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now(),
+                                                               'write_user' : 1,
+                                                               'asset' : self.asset_idx})
+                    self.inserts.append({'WhoProfile' : {'schema' : {'provider' : i_val},
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now(),
+                                                               'write_user' : 1,
+                                                               'asset' : self.asset_idx}})
+                elif key == 'funder':
+                    self.normSQL.insert_profile('WhoProfile', {'schema' : {'funder' : i_val},
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now(),
+                                                               'write_user' : 1,
+                                                               'asset' : self.asset_idx})
+                    self.inserts.append({'WhoProfile' : {'schema' : {'funder' : i_val},
+                                                               'version' : self.version,
+                                                               'timestamp' : datetime.datetime.now(),
+                                                               'write_user' : 1,
+                                                               'asset' : self.asset_idx}})
+                elif key == 'temporalCoverage':
+                    self.normSQL.insert_profile('WhatProfile', 
+                                                {'schema' : {'temporalCoverage' : i_val},
+                                                 'version' : self.version,
+                                                 'timestamp' : datetime.datetime.now(),
+                                                 'user' : 1,
+                                                 'asset' : self.asset_idx})
+                    self.inserts.append({'WhatProfile' : {'schema' : {'temporalCoverage' : i_val},
+                                                 'version' : self.version,
+                                                 'timestamp' : datetime.datetime.now(),
+                                                 'user' : 1,
+                                                 'asset' : self.asset_idx}})
+            self.asset_idx += 1
+    
+    def insert_full_NSonce(self):
+        for chunk in self.df:
+            self.insert_data_normalized_SQLite(chunk)
                 
 
 if __name__ == "__main__":
     schema_eval = Schema_Evaluation('/Users/psubramaniam/Documents/Fall2020/testcatalogdata/dataset_metadata_2020_08_17.csv',
-                                    1000, 1)
-    schema_eval.insert_data_normalized_SQLite()
+                                    100000, 1)
+    #schema_eval = Schema_Evaluation('/home/pranav/dataset_metadata_2020_08_17.csv',
+                                    #1000, 1)
+    schema_eval.insert_full_NSonce()
     
         

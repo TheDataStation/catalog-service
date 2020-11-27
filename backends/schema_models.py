@@ -88,9 +88,9 @@ class WhenProfile(BaseModel):
     timestamp = DateTimeField()
     user = ForeignKeyField(User, null=True)
     asset = ForeignKeyField(Asset, backref='when_asset')
-    asset_timestamp = DateTimeField()
-    expiry_date = DateTimeField()
-    start_date = DateTimeField()
+    asset_timestamp = DateTimeField(null=True)
+    expiry_date = DateTimeField(null=True)
+    start_date = DateTimeField(null=True)
 
 
 class SourceType(BaseModel):
@@ -100,6 +100,9 @@ class SourceType(BaseModel):
 
 
 class Source(BaseModel):
+    version = IntegerField()
+    timestamp = DateTimeField()
+    user = ForeignKeyField(User, null=True)
     name = TextField()
     source_type = ForeignKeyField(SourceType, backref='source_type')
     schema = JSONField()
@@ -110,7 +113,7 @@ class WhereProfile(BaseModel):
     timestamp = DateTimeField()
     user = ForeignKeyField(User, null=True)
     asset = ForeignKeyField(Asset, backref='where_asset')
-    access_path = TextField()
+    access_path = TextField(null=True)
     source = ForeignKeyField(Source, backref='where_source', null=True)
     configuration = JSONField(null=True)
 
@@ -153,7 +156,11 @@ class H_User(BaseModel):
     #(we need this because if this is a true append-only database,
     #then if a user makes a mistake inserting into the database,
     # then when they reinsert, we'll have a new version.)
-    userId = IntegerField()
+    #UPDATE: hubs don't need their own ID fields (besides "itemID"), because
+    #the entire point of data vault is that the satellites will take care of
+    #evolution for you--you shouldn't need to make a new ID for an entity
+    #that's already being tracked in your database.
+    #userId = IntegerField()
     name = TextField()
     
     version = IntegerField()
@@ -172,7 +179,7 @@ class S_User_schema(BaseModel):
 #name and description shouldn't be part of a hub table
 #TODO: come back and fix above
 class H_UserType(BaseModel):
-    user_typeId = IntegerField()
+    #user_typeId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
