@@ -1,7 +1,3 @@
-"""
-Schema Models are core data structure of Catalog Service. They will be mapped to runtime-instances by ORM
-"""
-
 from peewee import *
 from playhouse.sqlite_ext import *
 
@@ -12,142 +8,7 @@ database = SqliteDatabase(None)
 class BaseModel(Model):
     class Meta:
         database = database
-
-######### Normalized Schema ###################
-#TODO: remove the Item table! We made up our minds that we would
-#replicate the Item attributes across tables 
-#(making the itemId the primary key of every table)
-# class Item(BaseModel):
-#     version = IntegerField()
-#     timestamp = DateTimeField()
-#     user = DeferredForeignKey('User', null=True)
-
-
-class UserType(BaseModel):
-    name = TextField()
-    description = TextField()
-
-
-class User(BaseModel):
-    name = TextField()
-    user_type = ForeignKeyField(UserType, backref='user_type')
-    schema = JSONField()
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = DeferredForeignKey('User', null=True)
-
-
-class AssetType(BaseModel):
-    name = TextField()
-    description = TextField()
-
-
-class Asset(BaseModel):
-    name = TextField()
-    asset_type = ForeignKeyField(AssetType, backref='asset_type', null=True)
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-
-
-class WhoProfile(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    write_user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='who_asset')
-    user = ForeignKeyField(User, backref='who_user', null=True)
-    schema = JSONField()
-
-
-class WhatProfile(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='what_asset')
-    schema = JSONField()
-
-
-class HowProfile(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='how_asset')
-    schema = JSONField()
-
-
-class WhyProfile(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='why_asset')
-    schema = JSONField()
-
-
-class WhenProfile(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='when_asset')
-    asset_timestamp = DateTimeField(null=True)
-    expiry_date = DateTimeField(null=True)
-    start_date = DateTimeField(null=True)
-
-
-class SourceType(BaseModel):
-    connector = TextField()
-    serde = TextField()
-    datamodel = TextField()
-
-
-class Source(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    name = TextField()
-    source_type = ForeignKeyField(SourceType, backref='source_type')
-    schema = JSONField()
-
-
-class WhereProfile(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='where_asset')
-    access_path = TextField(null=True)
-    source = ForeignKeyField(Source, backref='where_source', null=True)
-    configuration = JSONField(null=True)
-
-
-class Action(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    asset = ForeignKeyField(Asset, backref='action_asset')
-    who = ForeignKeyField(WhoProfile, backref='action_who')
-    how = ForeignKeyField(HowProfile, backref='action_how')
-    why = ForeignKeyField(WhyProfile, backref='action_why')
-    when = ForeignKeyField(WhenProfile, backref='action_when')
-    
-
-class RelationshipType(BaseModel):
-    name = TextField()
-    description = TextField()
-
-class Relationship(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = ForeignKeyField(User, null=True)
-    relationship_type = ForeignKeyField(RelationshipType, backref='rel_type')
-    schema = JSONField()
-
-#the many-many relationship table for the 
-#'relationship-to-asset' relationship
-class Asset_Relationships(BaseModel):
-    asset = ForeignKeyField(Asset, backref='rel_asset')
-    relationship = ForeignKeyField(Relationship, backref='asset_rel')
-
-######### End Normalized Schema ###################
-
+        
 ######### Data Vault Schema ###################
 class H_User(BaseModel):
     #NOT a primary key, but uniquely identifies
@@ -168,13 +29,16 @@ class H_User(BaseModel):
     #it doesn't make sense to have a user here, because if a user
     #inserts their own name, that user 
     #obviously doesn't exist in the database
+    #...but there are cases where another user inserts the name of some user
+    user = DeferredForeignKey('H_User', null=True)
 
 class S_User_schema(BaseModel):
-    user = ForeignKeyField(H_User, backref='h_schema_user')
+    user = ForeignKeyField(H_User,  null=True, backref='h_schema_user')
     schema = JSONField()
     
     version = IntegerField()
     timestamp = DateTimeField()
+    write_user = ForeignKeyField(H_User, null=True)
 
 #name and description shouldn't be part of a hub table
 #TODO: come back and fix above
@@ -183,6 +47,7 @@ class H_UserType(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
+    user = ForeignKeyField(H_User, null=True)
 
 class S_UserTypeAttributes(BaseModel):
     name = TextField()
@@ -190,10 +55,15 @@ class S_UserTypeAttributes(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
+    user = ForeignKeyField(H_User, null=True)
 
 class L_UserTypeLink(BaseModel):
-    user = ForeignKeyField(H_User, backref='l_user')
+    user = ForeignKeyField(H_User,  null=True, backref='l_user')
     user_type = ForeignKeyField(H_UserType, backref='l_type')
+    
+    version = IntegerField()
+    timestamp = DateTimeField()
+    write_user = ForeignKeyField(H_User, null=True)
 
 class H_Asset(BaseModel):
     #NOT a primary key, but uniquely identifies
@@ -204,14 +74,14 @@ class H_Asset(BaseModel):
     name = TextField()
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_asset_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_asset_user')
 
 class H_AssetType(BaseModel):
     #asset_typeId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_atype_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_atype_user')
     
 class S_AssetTypeAttributes(BaseModel):
     name = TextField()
@@ -219,7 +89,7 @@ class S_AssetTypeAttributes(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='s_atype_user')
+    user = ForeignKeyField(H_User, null=True, backref='s_atype_user')
     
 
 class L_AssetTypeLink(BaseModel):
@@ -228,7 +98,7 @@ class L_AssetTypeLink(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_atype_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_atype_user')
 
 
 class H_WhoProfile(BaseModel):
@@ -239,7 +109,7 @@ class H_WhoProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_who_write_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_who_write_user')
 
 class L_Asset_WhoProfile(BaseModel):
     asset = ForeignKeyField(H_Asset)
@@ -247,7 +117,7 @@ class L_Asset_WhoProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_awho_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_awho_user')
 
 class S_WhoProfile_schema(BaseModel):
     who_profile = ForeignKeyField(H_WhoProfile)
@@ -255,7 +125,7 @@ class S_WhoProfile_schema(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_awho_user')
+    user = ForeignKeyField(H_User, null=True, backref='s_awho_user')
 
 class L_WhoProfileUser(BaseModel):
     who_profile = ForeignKeyField(H_WhoProfile)
@@ -263,14 +133,14 @@ class L_WhoProfileUser(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_uwho_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_uwho_user')
 
 class H_HowProfile(BaseModel):
     #how_profileId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_how_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_how_user')
     
 class S_HowProfile_schema(BaseModel):
     how_profile = ForeignKeyField(H_HowProfile)
@@ -278,7 +148,7 @@ class S_HowProfile_schema(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_howschema_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_howschema_user')
 
 class L_Asset_HowProfile(BaseModel):
     asset = ForeignKeyField(H_Asset)
@@ -286,14 +156,14 @@ class L_Asset_HowProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_ahow_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_ahow_user')
 
 class H_WhyProfile(BaseModel):
     #why_profileId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_why_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_why_user')
     
 class S_WhyProfile_schema(BaseModel):
     why_profile = ForeignKeyField(H_WhyProfile)
@@ -301,7 +171,7 @@ class S_WhyProfile_schema(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_whyschema_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_whyschema_user')
 
 class L_Asset_WhyProfile(BaseModel):
     asset = ForeignKeyField(H_Asset)
@@ -309,14 +179,14 @@ class L_Asset_WhyProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_awhy_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_awhy_user')
 
 class H_WhatProfile(BaseModel):
     #what_profileId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_what_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_what_user')
     
 class S_WhatProfile_schema(BaseModel):
     what_profile = ForeignKeyField(H_WhatProfile)
@@ -324,7 +194,7 @@ class S_WhatProfile_schema(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_whatschema_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_whatschema_user')
 
 class L_Asset_WhatProfile(BaseModel):
     asset = ForeignKeyField(H_Asset)
@@ -332,23 +202,24 @@ class L_Asset_WhatProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_awhat_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_awhat_user')
 
 class H_WhenProfile(BaseModel):
     #when_profileId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_when_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_when_user')
 
 class S_WhenProfile_Attributes(BaseModel):
+    h_when = ForeignKeyField(H_WhenProfile)
     asset_timestamp = DateTimeField()
     expiry_date = DateTimeField()
     start_date = DateTimeField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='s_when_user')
+    user = ForeignKeyField(H_User, null=True, backref='s_when_user')
 
 class L_Asset_WhenProfile(BaseModel):
     asset = ForeignKeyField(H_Asset)
@@ -356,7 +227,7 @@ class L_Asset_WhenProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_awhen_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_awhen_user')
 
 class H_WhereProfile(BaseModel):
     #where_profileId = IntegerField()
@@ -364,7 +235,7 @@ class H_WhereProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_where_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_where_user')
 
 class S_Configuration(BaseModel):
     schema = JSONField()
@@ -372,21 +243,27 @@ class S_Configuration(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_where_config')
+    user = ForeignKeyField(H_User, null=True, backref='h_where_config')
 
 class H_Source(BaseModel):
     #sourceId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_where_source')
+    user = ForeignKeyField(H_User, null=True, backref='h_where_source')
+    
+class S_Source_schema(BaseModel):
+    schema = JSONField()
+    version = IntegerField()
+    timestamp = DateTimeField()
+    user = ForeignKeyField(H_User, null=True)
     
 class H_SourceType(BaseModel):
     #source_typeId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_where_sourcetype')
+    user = ForeignKeyField(H_User, null=True, backref='h_where_sourcetype')
 
 class S_SourceTypeAttributes(BaseModel):
     source_type = ForeignKeyField(H_SourceType)
@@ -396,7 +273,7 @@ class S_SourceTypeAttributes(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='s_where_sourcetype')
+    user = ForeignKeyField(H_User, null=True, backref='s_where_sourcetype')
 
 class L_Source2Type(BaseModel):
     source = ForeignKeyField(H_Source)
@@ -404,7 +281,16 @@ class L_Source2Type(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='l_awhere_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_awhere_user')
+    
+class L_WhereProfile_Source(BaseModel):
+    source = ForeignKeyField(H_Source)
+    where_profile = ForeignKeyField(H_WhereProfile)
+    
+    version = IntegerField()
+    timestamp = DateTimeField()
+    user = ForeignKeyField(H_User, null=True)
+    
 
 class L_Asset_WhereProfile(BaseModel):
     asset = ForeignKeyField(H_Asset)
@@ -412,14 +298,14 @@ class L_Asset_WhereProfile(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_asset_where')
+    user = ForeignKeyField(H_User, null=True, backref='h_asset_where')
 
 class H_Action(BaseModel):
     #actionId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User, backref='h_asset_action')
+    user = ForeignKeyField(H_User, null=True, backref='h_asset_action')
 
 class L_AssetsInActions(BaseModel):
     action = ForeignKeyField(H_Action)
@@ -428,13 +314,17 @@ class L_AssetsInActions(BaseModel):
     why_profile = ForeignKeyField(H_WhyProfile)
     when_profile = ForeignKeyField(H_WhenProfile)
     how_profile = ForeignKeyField(H_HowProfile)
+    
+    version = IntegerField()
+    timestamp = DateTimeField()
+    user = ForeignKeyField(H_User, null=True)
 
 class H_RelationshipType(BaseModel):
     #relationship_typeId = IntegerField()
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User,  null=True, backref='h_reltype_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_reltype_user')
 
 class S_RelationshipTypeAttributes(BaseModel):
     name = TextField()
@@ -442,7 +332,7 @@ class S_RelationshipTypeAttributes(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User,  null=True, backref='s_reltype_user')
+    user = ForeignKeyField(H_User, null=True, backref='s_reltype_user')
     
     
 
@@ -451,11 +341,15 @@ class H_Relationship(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User,  null=True, backref='h_arel_user')
+    user = ForeignKeyField(H_User, null=True, backref='h_arel_user')
 
 class S_Relationship_schema(BaseModel):
     relationship = ForeignKeyField(H_Relationship)
     schema = JSONField()
+    
+    version = IntegerField()
+    timestamp = DateTimeField()
+    user = ForeignKeyField(H_User, null=True)
 
 class L_Relationship_Type(BaseModel):
     relationship = ForeignKeyField(H_Relationship)
@@ -463,7 +357,7 @@ class L_Relationship_Type(BaseModel):
     
     version = IntegerField()
     timestamp = DateTimeField()
-    user = ForeignKeyField(H_User,  null=True, backref='l_reltype_user')
+    user = ForeignKeyField(H_User, null=True, backref='l_reltype_user')
 
 #the many-many relationship table for the 
 #'relationship-to-asset' relationship

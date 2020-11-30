@@ -4,7 +4,7 @@ Backend API is based on schema model instances mapped by ORM
 """
 import io
 import cProfile, pstats
-from backends.schema_models import *
+from schema_models import *
 
 #TODO: change the backend functions so they don't depend on schema type-specific
 #attributes, like "Item"
@@ -107,7 +107,8 @@ class NormalizedSQLiteBackend(NormalizedBackend):
         # catalog hides backend-specific operations
         self.ins_map = {}
         self.profile_ins_map = {}
-        database.init(backend_path)
+        self.database = database
+        self.database.init(backend_path, pragmas={'journal_mode' : 'wal', 'synchronous' : 0})
         self.create_tables()
     
     def execute(self, query_num, stmt):

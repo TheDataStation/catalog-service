@@ -1,14 +1,14 @@
-from backends.backend_api import NormalizedSQLiteBackend
-from backends.backend_api import DataVaultSQLiteBackend
-from backends.catserv_api import CatalogService
+from backend_api import NormalizedSQLiteBackend
+from backend_api import DataVaultSQLiteBackend
+from catserv_api import CatalogService
 import os
-from backends.schema_models import *
+from schema_models import *
 import io
 import cProfile, pstats
 import pandas as pd
 import datetime
 
-class Schema_Evaluation:
+class Normalized_Schema_Evaluation:
     
     def __init__(self, datafile, trim_num, num_reps):
         self.df = self.convert_to_pd(datafile, trim_num)
@@ -17,11 +17,14 @@ class Schema_Evaluation:
         self.version = 1
         self.asset_idx = 1
         self.normSQL = None
-        self.dvSQL = None
-        self.normGraph = None
-        self.dvGraph = None
+        self.init_NSQLsetup()
         self.inserts = [] #inserts we've performed
         self.queries = [] #queries we've performed
+        self.ns_ins_map = {}
+        self.init_ns_ins_map()
+        self.ns_inserts = {}
+        self.init_ns_inserts()
+        
         self.concept_map = {'url' : {'WhereProfile' : 'access_path'},
                'name' : {'Asset' : 'name'},
                'alternateName' : {'Asset' : 'name'},
@@ -68,6 +71,44 @@ class Schema_Evaluation:
         #print(df.shape)
         return df
     
+    def init_ns_ins_map(self):
+        self.ns_ins_map["UserType"] = UserType
+        self.ns_ins_map["User"] = User
+        self.ns_ins_map["AssetType"] = AssetType
+        self.ns_ins_map["Asset"] = Asset
+        self.ns_ins_map["WhoProfile"] = WhoProfile
+        self.ns_ins_map["WhatProfile"] = WhatProfile
+        self.ns_ins_map["HowProfile"] = HowProfile
+        self.ns_ins_map["WhyProfile"] = WhyProfile
+        self.ns_ins_map["WhenProfile"] = WhenProfile
+        self.ns_ins_map["SourceType"] = SourceType
+        self.ns_ins_map["Source"] = Source
+        self.ns_ins_map["WhereProfile"] = WhereProfile
+        self.ns_ins_map["Action"] = Action
+        self.ns_ins_map["RelationshipType"] = RelationshipType
+        self.ns_ins_map["Relationship"] = Relationship
+        self.ns_ins_map['Asset_Relationships'] = Asset_Relationships
+    
+    def init_ns_inserts(self):
+        self.ns_inserts["UserType"] = []
+        self.ns_inserts["User"] = []
+        self.ns_inserts["AssetType"] = []
+        self.ns_inserts["Asset"] = []
+        self.ns_inserts["WhoProfile"] = []
+        self.ns_inserts["WhatProfile"] = []
+        self.ns_inserts["HowProfile"] = []
+        self.ns_inserts["WhyProfile"] =[]
+        self.ns_inserts["WhenProfile"] = []
+        self.ns_inserts["SourceType"] = []
+        self.ns_inserts["Source"] = []
+        self.ns_inserts["WhereProfile"] = []
+        self.ns_inserts["Action"] = []
+        self.ns_inserts["RelationshipType"] = []
+        self.ns_inserts["Relationship"] = []
+        self.ns_inserts['Asset_Relationships'] = []
+    
+    
+    
     def init_NSQLsetup(self):
         self.normSQL = CatalogService(NormalizedSQLiteBackend('normalized_catalog.db'))
         self.normSQL.insert_profile("User", {"name": "admin", "user_type": 1, 
@@ -78,7 +119,6 @@ class Schema_Evaluation:
         insertedAssetType = False
         insertedRelType = False
         insertedSourceType = False
-        self.init_NSQLsetup()
         #convert all nan's to nulls
         chunk = chunk.fillna('NULL')
         
@@ -104,6 +144,13 @@ class Schema_Evaluation:
                                                        'timestamp' : str(datetime.datetime.now()),
                                                        'user' : 1,
                                                        'asset' : self.asset_idx}})
+                    self.ns_inserts['WhereProfile'].append({'access_path': i_val, 
+                                                       'configuration' : None, 
+                                                       'source' : None, 
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx})
                 elif key == 'name':
                     if insertedAssetType:
                         self.normSQL.insert_profile('Asset' , {'name' : i_val,
@@ -116,12 +163,20 @@ class Schema_Evaluation:
                                                            'version' : self.version,
                                                            'timestamp' : str(datetime.datetime.now()),
                                                            'user' : 1}})
+                        
+                        self.ns_inserts['Asset'].append({'name' : i_val,
+                                                           'asset_type' : 1,
+                                                           'version' : self.version,
+                                                           'timestamp' : str(datetime.datetime.now()),
+                                                           'user' : 1})
                     else:
                         #in this case, there's only one asset type, and that's an image
                         self.normSQL.insert_profile('AssetType', {'name' : 'Image',
                                                                   'description' : 'A file consisting of bytes that represent pixels'})
                         self.inserts.append({'AssetType' : {'name' : 'Image',
                                                                   'description' : 'A file consisting of bytes that represent pixels'}})
+                        self.ns_inserts['AssetType'].append({'name' : 'Image',
+                                                                  'description' : 'A file consisting of bytes that represent pixels'})
                         insertedAssetType = True
                         self.normSQL.insert_profile('Asset', {'name' : i_val,
                                                            'asset_type' : 1,
@@ -133,6 +188,11 @@ class Schema_Evaluation:
                                                            'version' : self.version,
                                                            'timestamp' : str(datetime.datetime.now()),
                                                            'user' : 1}})
+                        self.ns_inserts['Asset'].append({'name' : i_val,
+                                                           'asset_type' : 1,
+                                                           'version' : self.version,
+                                                           'timestamp' : str(datetime.datetime.now()),
+                                                           'user' : 1})
                 elif key == 'description':
                     self.normSQL.insert_profile('WhatProfile', {'schema' : {'instanceMeaning' : i_val},
                                                        'version' : self.version,
@@ -144,9 +204,14 @@ class Schema_Evaluation:
                                                        'timestamp' : str(datetime.datetime.now()),
                                                        'user' : 1,
                                                        'asset' : self.asset_idx}})
+                    self.ns_inserts['WhatProfile'].append({'schema' : {'instanceMeaning' : i_val},
+                                                       'version' : self.version,
+                                                       'timestamp' : str(datetime.datetime.now()),
+                                                       'user' : 1,
+                                                       'asset' : self.asset_idx})
                 elif key == 'variablesMeasured':
                     #print("i_val is: " + str(i_val))
-                    print(i_val)
+                    #print(i_val)
                     self.normSQL.insert_profile('WhatProfile', {'schema' : {'variablesRecorded' : i_val},
                                                        'version' : self.version,
                                                        'timestamp' : str(datetime.datetime.now()),
@@ -188,7 +253,7 @@ class Schema_Evaluation:
                         
                         if rel_key == None:
                             print("Rel_key is None!")
-                            print(i_val)
+                            #print(i_val)
                         
                         self.normSQL.insert_profile('Asset_Relationships',
                                                     {'asset' : self.asset_idx,
@@ -216,7 +281,7 @@ class Schema_Evaluation:
                         
                         if rel_key == None:
                             print("Rel_key is None!")
-                            print(i_val)
+                            #print(i_val)
                         
                         self.normSQL.insert_profile('Asset_Relationships',
                                                     {'asset' : self.asset_idx,
@@ -450,15 +515,25 @@ class Schema_Evaluation:
             self.asset_idx += 1
     
     def insert_full_NSonce(self):
-        for chunk in self.df:
-            self.insert_data_normalized_SQLite(chunk)
-                
+        with self.normSQL.bk.database.transaction() as txn:
+            for chunk in self.df:
+                self.insert_data_normalized_SQLite(chunk)
+            txn.commit()
+    
+    def test_inserts(self):
+        with self.normSQL.bk.database.transaction() as txn:
+            self.insert_data_normalized_SQLite(self.df)
+            txn.commit()
 
 if __name__ == "__main__":
-    schema_eval = Schema_Evaluation('/Users/psubramaniam/Documents/Fall2020/testcatalogdata/dataset_metadata_2020_08_17.csv',
+    #schema_eval = Schema_Evaluation('/Users/psubramaniam/Documents/Fall2020/testcatalogdata/dataset_metadata_2020_08_17.csv',
+                                    #100000, 1)
+    schema_eval = Normalized_Schema_Evaluation('/home/pranav/dataset_metadata_2020_08_17.csv',
                                     100000, 1)
-    #schema_eval = Schema_Evaluation('/home/pranav/dataset_metadata_2020_08_17.csv',
-                                    #1000, 1)
     schema_eval.insert_full_NSonce()
+    #schema_eval.test_inserts()
+    # schema_eval = Schema_Evaluation('/Users/psubramaniam/Documents/Fall2020/testcatalogdata/dataset_metadata_2020_08_17.csv',
+    #                                 1000, 1)
+    
     
         
