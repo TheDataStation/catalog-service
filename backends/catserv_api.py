@@ -3,6 +3,7 @@ Catalog service API -- all functionality is offered via this module. This module
 via one of the frontends available
 """
 import json
+import datetime
 
 
 class CatalogService:
@@ -52,10 +53,10 @@ class CatalogService:
         :return:
         """
         return self.bk.put(ins_name, content)
-    
+
     #TODO: Why do we have item_id here? How would a user ever query anything
     #using its item_id?
-    def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Low-level get with filters
         :param ins_name:
@@ -96,26 +97,30 @@ class CatalogService:
 
         # TODO synchronize possible keywords to ES to speed up search
         # current simple version run search loops among some core schemas' fields
-        related_profiles = {"WhoProfile": {},"WhatProfile": {},"HowProfile": {},"WhyProfile": {}}
-        item_set = set()
-        words = tuple(keywords.split())
-        item_set.update([_.get("item") for _ in self.get("User", name=words)])
-        item_set.update([_.get("item") for _ in self.get("Asset", name=words)])
-        for profile_name in related_profiles.keys():
-            for profile in self.get(profile_name, item_id = tuple(item_set)): related_profiles[profile_name][str(profile["id"])] = profile
-            for profile in self.get(profile_name, sub_schema={"*": words}): related_profiles[profile_name][str(profile["id"])] = profile
-        return related_profiles
 
-    def get_profiles(self, profile_name, item_id=None, asset_id=None, sub_schema=None):
+        records = []
+
+        words = keywords.split(",")
+        print(words)
+        for table in ["User", "WhoProfile", "WhatProfile", "HowProfile", "WhyProfile"]:
+            for w in words:
+                for record in self.get(ins_name=table, sub_schema={"*": w}):
+                    records.append(record)
+        for table in ["User", "Asset"]:
+            for record in self.get(ins_name=table, name=words):
+                records.append(record)
+        print (records)
+        return json.dumps(records,default = date_converter)
+
+    def get_profiles(self, profile_name, asset_id=None,user_id = None, sub_schema=None):
         """
         Users could get profiles by filters
         :param profile_name:
-        :param item_id:
         :param asset_id:
         :param sub_schema:
         :return:
         """
-        return self.get(profile_name,item_id,asset_id,sub_schema)
+        return self.get(ins_name=profile_name,asset_id=asset_id,sub_schema=sub_schema)
 
     def insert_profile(self, profile_name, content):
         """
@@ -126,6 +131,18 @@ class CatalogService:
         """
         return self.put(profile_name, content)
 
+    def insert_what_profile(self, content):
+        """
+        Users could insert profiles with json
+        :param profile_name:
+        :param content:
+        :return:
+        """
+        return self.put("WhatProfile", content)
+
+def date_converter(o):
+    if isinstance(o, datetime.datetime):
+        return o.__str__()
 
 if __name__ == "__main__":
     print("Main Catalog Service API")

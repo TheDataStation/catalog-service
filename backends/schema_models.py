@@ -13,6 +13,7 @@ class BaseModel(Model):
     class Meta:
         database = database
 
+
 ######### Normalized Schema ###################
 #TODO: remove the Item table! We made up our minds that we would
 #replicate the Item attributes across tables 
@@ -21,7 +22,6 @@ class BaseModel(Model):
 #     version = IntegerField()
 #     timestamp = DateTimeField()
 #     user = DeferredForeignKey('User', null=True)
-
 
 class UserType(BaseModel):
     name = TextField()
