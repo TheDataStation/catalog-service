@@ -13,13 +13,14 @@ class Backend(object):
     def put(self, schema_id, content):
         pass
 
-    def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_name: (str, ...) = None, user_id = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Query backends with filters connected by "AND" semantic.
+        :param user_id:
         :param ins_name: schema ins name
         :param id: set filter
         :param item_id:  set filter
-        :param asset_id:  set filter
+        :param asset_name:  set filter
         :param timestamp:  range filter
         :param name: set filter
         :param version: range filter
@@ -28,7 +29,7 @@ class Backend(object):
         """
         pass
 
-    def delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+    def delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_name: (str, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         pass
 
 
@@ -36,16 +37,18 @@ class SQLiteBackend(Backend):
 
     def __init__(self, backend_path="catserv.db"):
         # catalog hides backend-specific operations
+
         self.ins_map = {}
         self.profile_ins_map = {}
+        print("init sqlite at "+backend_path)
         database.init(backend_path)
         self.create_tables()
 
     def put(self, ins_name, content):
         return self.get_ins(ins_name).insert(content).execute()
 
-    def get(self,ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
-        sql = self.build_sql(ins_name, "query", id, item_id, asset_id, timestamp, name, version, sub_schema)
+    def get(self,ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (str, ...) = None,user_id = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+        sql = self.build_sql(ins_name, "query", id, item_id, asset_id,user_id, timestamp, name, version, sub_schema)
         print(sql)
         return list(sql.dicts())
 
@@ -54,7 +57,7 @@ class SQLiteBackend(Backend):
         print(sql)
         return sql.execute()
 
-    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, user_id = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
 
         global sql
         ins = self.get_ins(ins_name)
@@ -69,8 +72,8 @@ class SQLiteBackend(Backend):
             expr = False
             for k,v in sub_schema.items():
                 if k == "*":
-                    for wildcard_v in v:
-                        expr |= (kd.c.value == wildcard_v)
+                    #for wildcard_v in v:
+                    expr |= (kd.c.value == v)
                 elif v == "*":
                     expr |= (kd.c.key == k)
                 else:
@@ -91,6 +94,11 @@ class SQLiteBackend(Backend):
             expr = False
             for i in asset_id:
                 expr |= (ins.asset_id == i)
+            sql = sql.where(expr)
+        if user_id is not None:
+            expr = False
+            for i in user_id:
+                expr |= (ins.user_id == i)
             sql = sql.where(expr)
         if timestamp is not None:
             expr = True
@@ -119,12 +127,12 @@ class SQLiteBackend(Backend):
 
     def create_tables(self):
         with database:
-            database.create_tables([Item, UserType, User, AssetType,
+            database.create_tables([UserType, User, AssetType,
                                     Asset, WhoProfile, WhatProfile,
                                     HowProfile, WhyProfile, WhenProfile,
                                     SourceType, Source, WhereProfile, Action])
             # Item.__schema.create_foreign_key(Item.user)
-            self.ins_map["Item"] = Item
+            #self.ins_map["Item"] = Item
             self.ins_map["UserType"] = UserType
             self.ins_map["User"] = User
             self.ins_map["AssetType"] = AssetType

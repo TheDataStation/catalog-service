@@ -14,10 +14,10 @@ class BaseModel(Model):
         database = database
 
 
-class Item(BaseModel):
-    version = IntegerField()
-    timestamp = DateTimeField()
-    user = DeferredForeignKey('User', null=True)
+# class Item(BaseModel):
+#     version = IntegerField()
+#     timestamp = DateTimeField()
+#     user = DeferredForeignKey('User', null=True)
 
 
 class UserType(BaseModel):
@@ -27,7 +27,7 @@ class UserType(BaseModel):
 
 class User(BaseModel):
     name = TextField()
-    item = ForeignKeyField(Item, backref='user_item')
+    #item = ForeignKeyField(Item, backref='user_item')
     user_type = ForeignKeyField(UserType, backref='user_type')
     schema = JSONField()
 
@@ -39,37 +39,37 @@ class AssetType(BaseModel):
 
 class Asset(BaseModel):
     name = TextField()
-    asset_type = ForeignKeyField(AssetType, backref='asset_type')
-    item = ForeignKeyField(Item, backref='asset_item')
+    asset_type = ForeignKeyField(AssetType, backref='asset_type', to_field="name")
+    #item = ForeignKeyField(Item, backref='asset_item')
 
 
 class WhoProfile(BaseModel):
-    item = ForeignKeyField(Item, backref='who_item')
-    asset = ForeignKeyField(Asset, backref='who_asset')
-    user = ForeignKeyField(User, backref='who_user')
+    #item = ForeignKeyField(Item, backref='who_item')
+    asset = ForeignKeyField(Asset, backref='who_asset', to_field="name")
+    user = ForeignKeyField(User, backref='who_user', to_field="name")
     schema = JSONField()
 
 
 class WhatProfile(BaseModel):
-    item = ForeignKeyField(Item, backref='what_item')
-    asset = ForeignKeyField(Asset, backref='what_asset')
+    #item = ForeignKeyField(Item, backref='what_item')
+    asset = ForeignKeyField(Asset, backref='what_asset', to_field="name")
     schema = JSONField()
 
 
 class HowProfile(BaseModel):
-    item = ForeignKeyField(Item, backref='how_item')
+    #item = ForeignKeyField(Item, backref='how_item')
     asset = ForeignKeyField(Asset, backref='how_asset')
     schema = JSONField()
 
 
 class WhyProfile(BaseModel):
-    item = ForeignKeyField(Item, backref='why_item')
+    #item = ForeignKeyField(Item, backref='why_item')
     asset = ForeignKeyField(Asset, backref='why_asset')
     schema = JSONField()
 
 
 class WhenProfile(BaseModel):
-    item = ForeignKeyField(Item, backref='when_item')
+    #item = ForeignKeyField(Item, backref='when_item')
     asset = ForeignKeyField(Asset, backref='when_asset')
     asset_timestamp = DateTimeField()
     expiry_date = DateTimeField()
@@ -89,7 +89,7 @@ class Source(BaseModel):
 
 
 class WhereProfile(BaseModel):
-    item = ForeignKeyField(Item, backref='where_item')
+    #item = ForeignKeyField(Item, backref='where_item')
     asset = ForeignKeyField(Asset, backref='where_asset')
     access_path = TextField()
     source = ForeignKeyField(Source, backref='where_source')
@@ -97,7 +97,7 @@ class WhereProfile(BaseModel):
 
 
 class Action(BaseModel):
-    item = ForeignKeyField(Item, backref='action_item')
+    #item = ForeignKeyField(Item, backref='action_item')
     asset = ForeignKeyField(Asset, backref='action_asset')
     who = ForeignKeyField(WhoProfile, backref='action_who')
     how = ForeignKeyField(HowProfile, backref='action_how')
