@@ -3,6 +3,7 @@ Catalog service API -- all functionality is offered via this module. This module
 via one of the frontends available
 """
 import json
+import datetime
 
 
 class CatalogService:
@@ -53,7 +54,9 @@ class CatalogService:
         """
         return self.bk.put(ins_name, content)
 
-    def get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (str, ...) = None,user_id: (str, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    #TODO: Why do we have item_id here? How would a user ever query anything
+    #using its item_id?
+    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Low-level get with filters
         :param ins_name:
@@ -66,9 +69,11 @@ class CatalogService:
         :param sub_schema:
         :return:
         """
-        print(ins_name, id, item_id, asset_id, timestamp, name, version, sub_schema)
-        return self.bk.get(ins_name, id, item_id, asset_id,user_id, timestamp, name, version, sub_schema)
-
+        #return self.bk.get(ins_name, id, item_id, asset_id, timestamp, name, version, sub_schema)
+        return self.bk.get(ins_name, id, asset_id, timestamp, name, version, sub_schema)
+    
+    #TODO: Why do we have item_id here? How would a user ever delete anything
+    #using its item_id?
     def delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         """
         Low-level delete with filters
@@ -99,12 +104,13 @@ class CatalogService:
         print(words)
         for table in ["User", "WhoProfile", "WhatProfile", "HowProfile", "WhyProfile"]:
             for w in words:
-                for record in self.get(table, sub_schema={"*": w}):
+                for record in self.get(ins_name=table, sub_schema={"*": w}):
                     records.append(record)
         for table in ["User", "Asset"]:
-            for record in self.get(table, name=words):
+            for record in self.get(ins_name=table, name=words):
                 records.append(record)
-        return json.dumps(records)
+        print (records)
+        return json.dumps(records,default = date_converter)
 
     def get_profiles(self, profile_name, asset_id=None,user_id = None, sub_schema=None):
         """
@@ -114,7 +120,7 @@ class CatalogService:
         :param sub_schema:
         :return:
         """
-        return self.get(ins_name=profile_name,asset_id=asset_id,user_id = user_id,sub_schema=sub_schema)
+        return self.get(ins_name=profile_name,asset_id=asset_id,sub_schema=sub_schema)
 
     def insert_profile(self, profile_name, content):
         """
@@ -134,6 +140,9 @@ class CatalogService:
         """
         return self.put("WhatProfile", content)
 
+def date_converter(o):
+    if isinstance(o, datetime.datetime):
+        return o.__str__()
 
 if __name__ == "__main__":
     print("Main Catalog Service API")
