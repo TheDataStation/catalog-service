@@ -1,18 +1,16 @@
-from flask import Flask
 from flask import request
-from flask import Flask, Blueprint
-from flask_restplus import Api, Namespace, Resource, Swagger, fields
+from flask import Flask
+from flask_restplus import Api, Resource
 import json
-import config
 
 app = Flask(__name__)
 
 api = Api(app, prefix="/v1", title="catalog service", description="catserv api.")
 
-from frontends.api import create_api
+from ds_catalog_service.api.base import create_api
 
 # app = Flask(__name__)
-db_path = "../backends/catserv.db"
+db_path = "../ds_catalog_service/backends/catserv.db"
 cs = create_api("sqlite", db_path)
 
 
@@ -22,7 +20,7 @@ cs = create_api("sqlite", db_path)
 class SearchApi(Resource):
     def get(self):
         print(cs.bk.ins_map)
-        return cs.search_by_keywords(request.args.get('keywords', default="", type=str))
+        return cs._search_by_keywords(request.args.get('keywords', default="", type=str))
 
 
 @api.route('/get')

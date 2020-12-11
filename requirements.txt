@@ -5,3 +5,4 @@ flask==1.1.2
 flask-restplus==0.13.0
 fire==0.3.1
 Peewee
+neo4j

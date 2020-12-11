@@ -1,8 +1,8 @@
 import unittest
 
-from backends.backend_api import SQLiteBackend
-from backends.catserv_api import CatalogService
-import os,json
+from ds_catalog_service.backends import SQLiteBackend
+from ds_catalog_service.backends import CatalogService
+import json
 
 
 test_db_name = "catserv.db"
