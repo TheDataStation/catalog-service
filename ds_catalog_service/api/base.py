@@ -14,8 +14,16 @@ import json
 class CatalogService(ABC):
     def __init__(self, backend):
         # catalog hides backend-specific operations
-        self.bk = backend
+        self._backend = backend
         pass
+
+    @property
+    def backend(self):
+        return self._backend
+
+    @backend.setter
+    def backend(self, backend):
+        self._backend = backend
 
     @abstractmethod
     def __contains__(self, item):
@@ -60,7 +68,7 @@ class CatalogService(ABC):
         :param content:
         :return:
         """
-        return self.bk.put(ins_name, content)
+        return self._backend.put(ins_name, content)
 
     # TODO: Why do we have item_id here? How would a user ever query anything
     # using its item_id?
@@ -79,7 +87,7 @@ class CatalogService(ABC):
         :return:
         """
         # return self.bk.get(ins_name, id, item_id, asset_id, timestamp, name, version, sub_schema)
-        return self.bk.get(ins_name, id, asset_id, timestamp, name, version, sub_schema)
+        return self._backend.get(ins_name, id, asset_id, timestamp, name, version, sub_schema)
 
     # TODO: Why do we have item_id here? How would a user ever delete anything
     # using its item_id?
@@ -96,7 +104,7 @@ class CatalogService(ABC):
         :param version:
         :return:
         """
-        return self.bk.delete(ins_name, id, item_id, asset_id, timestamp, name, version)
+        return self._backend.delete(ins_name, id, item_id, asset_id, timestamp, name, version)
 
     def _search_by_keywords(self, keywords):
         """

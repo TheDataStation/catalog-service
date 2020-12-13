@@ -4,7 +4,8 @@ Backend API is based on schema model instances mapped by ORM
 """
 import io
 import cProfile, pstats
-
+from ds_catalog_service import DEFAULT_SQLITE_DB_PATH
+from sqlite3 import connect
 
 # TODO: change the backend functions so they don't depend on schema type-specific
 # attributes, like "Item"
