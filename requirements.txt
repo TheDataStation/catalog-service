@@ -1,3 +1,7 @@
+FastAPI[All]
+pydantic
+sqlalchemy
+SQLAlchemy-Utils
 pip-check==2.6
 datasette==0.52.5
 sqlite-utils==3.0.0

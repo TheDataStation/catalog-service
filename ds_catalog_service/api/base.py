@@ -9,10 +9,11 @@ import datetime
 from ds_catalog_service.backends.backend_api import NormalizedSQLiteBackend
 from abc import ABC, abstractmethod, abstractproperty
 import json
+from pathlib import Path
 
 
 class CatalogService(ABC):
-    def __init__(self, backend):
+    def __init__(self, backend=Path.home().joinpath('.data_station/catalog.db')):
         # catalog hides backend-specific operations
         self._backend = backend
         pass

@@ -29,7 +29,7 @@ setup(
     },
     entry_points="""
         [console_scripts]
-        ds-catalog-service=ds_catalog_service.api.cli:CLIBasedAPI
+        catalog-cli=ds_catalog_service.api.cli:CLIBasedAPI
     """,
     url="https://github.com/TheDataStation/catalog-service",
     project_urls={
