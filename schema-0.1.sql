@@ -18,6 +18,85 @@ create table if not exists data_asset
     metadata   JSON,
     created_at datetime not null
 );
+
+
+create table if not exists who_profile
+(
+    item_id                     not null primary key,
+    who_profile_id     text     not null,
+    version            text     not null,
+    timestamp          datetime not null,
+    asset_id           text     not null references data_asset (id),
+    who_profile_schema JSON, --not null,
+    user_item_id       text     not null references user (id)
+
+);
+
+create table if not exists what_profile
+(
+    item_id                      not null primary key,
+    what_profile_id     text     not null,
+    version             text     not null,
+    timestamp           datetime not null,
+    asset_id            text     not null references data_asset (id),
+    what_profile_schema JSON, --not null,
+    user_item_id        text references user (id)
+
+);
+
+
+create table if not exists how_profile
+(
+    item_id                     not null primary key,
+    how_profile_id     text,
+    version            text     not null,
+    timestamp          datetime not null,
+    asset_id           text     not null references data_asset (id),
+    how_profile_schema JSON, --not null,
+    user_item_id       text references user (id)
+
+);
+
+create table if not exists why_profile
+(
+    item_id                     not null primary key,
+    why_profile_id     text,
+    version            text     not null,
+    timestamp          datetime not null,
+    asset_id           text     not null references data_asset (id),
+    why_profile_schema JSON, --not null,
+    user_item_id       text references user (id)
+
+);
+
+create table if not exists where_profile
+(
+    item_id                       not null primary key,
+    where_profile_id     text,
+    version              text     not null,
+    timestamp            datetime not null,
+    asset_id             text     not null references data_asset (id),
+    access_path          text     not null,
+    configuration_schema JSON, --not null,
+    user_item_id         text references user (id)
+
+);
+
+create table if not exists when_profile
+(
+    item_id                  not null primary key,
+    when_profile_id text     not null,
+    version         text     not null,
+    asset_id        text     not null references data_asset (id),
+    asset_timestamp datetime not null,
+    expiry_date     datetime not null,
+    start_date      datetime not null,
+    user_item_id    text
+);
+
+----
+
+
 drop table if exists profiling;
 create table if not exists profiling --handle as an event
 (
