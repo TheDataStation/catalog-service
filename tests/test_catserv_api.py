@@ -1,7 +1,7 @@
 import unittest
 
-from backends.backend_api import NormalizedSQLiteBackend
-from backends.catserv_api import CatalogService
+from ds_catalog_service.backends import NormalizedSQLiteBackend
+from ds_catalog_service.backends import CatalogService
 import os
 import cProfile, pstats
 import io
@@ -29,12 +29,12 @@ class TestCatalogService(unittest.TestCase):
     def test_get_profile(self):
         #test search_by_keywords
         self.assertEqual({"id": 1,"item": 1, "asset": 1, "user": 1, "schema": {"family":{"father":"john","momther":"jenny"}}},
-                         self.cs.search_by_keywords("admin")["WhoProfile"]["1"], "get who profile error")
+                         self.cs._search_by_keywords("admin")["WhoProfile"]["1"], "get who profile error")
 
         #test json schema search
         self.assertEqual(
             {"id": 1,"item": 2, "asset": 2, "schema": {"paper":{"field": {"name":"db","field":"metadata"}}}},
-            self.cs.search_by_keywords("metadata")["WhatProfile"]["1"], "get what profile error")
+            self.cs._search_by_keywords("metadata")["WhatProfile"]["1"], "get what profile error")
 
 
 if __name__ == '__main__':

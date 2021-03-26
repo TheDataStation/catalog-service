@@ -4,22 +4,25 @@ Backend API is based on schema model instances mapped by ORM
 """
 import io
 import cProfile, pstats
-from schema_models import *
+from ds_catalog_service import DEFAULT_SQLITE_DB_PATH
+from sqlite3 import connect
 
-#TODO: change the backend functions so they don't depend on schema type-specific
-#attributes, like "Item"
+# TODO: change the backend functions so they don't depend on schema type-specific
+# attributes, like "Item"
 class Backend(object):
 
     def put(self, schema_id, content):
         pass
 
-    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+            name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Query backends with filters connected by "AND" semantic.
+        :param user_id:
         :param ins_name: schema ins name
         :param id: set filter
         :param item_id:  set filter
-        :param asset_id:  set filter
+        :param asset_name:  set filter
         :param timestamp:  range filter
         :param name: set filter
         :param version: range filter
@@ -28,18 +31,22 @@ class Backend(object):
         """
         pass
 
-    def delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+    def delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+               name: (str, ...) = None, version: (int, int) = None):
         pass
+
 
 class NormalizedBackend(Backend):
-    
+
     def normalized_put(self, schema_id, content):
         pass
-    
+
     def put(self, schema_id, content):
         return self.normalized_put(schema_id, content)
-    
-    def normalized_get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+
+    def normalized_get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None,
+                       timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None,
+                       sub_schema: {} = None):
         """
         Query backends with filters connected by "AND" semantic.
         :param ins_name: schema ins name
@@ -53,27 +60,33 @@ class NormalizedBackend(Backend):
         :return:
         """
         pass
-    
-    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
-        #TODO: figure out how to get item_id from all other information! (we're not assuming users will
-        #query by item_id)
+
+    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+            name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+        # TODO: figure out how to get item_id from all other information! (we're not assuming users will
+        # query by item_id)
         return self.normalized_get(ins_name, id, None, asset_id, timestamp, name, version, sub_schema)
 
-    def normalized_delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+    def normalized_delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None,
+                          asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None,
+                          version: (int, int) = None):
         pass
-    
-    def delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+
+    def delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+               name: (str, ...) = None, version: (int, int) = None):
         self.normalized_delete(ins_name, id, None, asset_id, timestamp, name, version)
 
+
 class DataVaultBackend(Backend):
-    
+
     def datavault_put(self, schema_id, content):
         pass
-    
+
     def put(self, schema_id, content):
         self.datavault_put(schema_id, content)
 
-    def datavault_get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def datavault_get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+                      name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         """
         Query backends with filters connected by "AND" semantic.
         :param ins_name: schema ins name
@@ -87,30 +100,33 @@ class DataVaultBackend(Backend):
         :return:
         """
         pass
-    
-    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
-        #TODO: figure out how to get item_id from all other information! (we're not assuming users will
-        #query by item_id)
+
+    def get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+            name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+        # TODO: figure out how to get item_id from all other information! (we're not assuming users will
+        # query by item_id)
         return self.datavault_get(ins_name, id, None, asset_id, timestamp, name, version, sub_schema)
 
-    def datavault_delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+    def datavault_delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None,
+                         timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         pass
-    
-    def delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+
+    def delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+               name: (str, ...) = None, version: (int, int) = None):
         self.datavault_delete(ins_name, id, None, asset_id, timestamp, name, version)
-    
-    
+
 
 class NormalizedSQLiteBackend(NormalizedBackend):
 
     def __init__(self, backend_path="catserv.db"):
         # catalog hides backend-specific operations
+
         self.ins_map = {}
         self.profile_ins_map = {}
-        self.database = database
-        self.database.init(backend_path, pragmas={'journal_mode' : 'wal', 'synchronous' : 0})
+        print("init sqlite at " + backend_path)
+        database.init(backend_path)
         self.create_tables()
-    
+
     def execute(self, query_num, stmt):
         pr = cProfile.Profile()
         pr.enable()
@@ -123,7 +139,7 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             f.write(str(sql))
             f.write(s.getvalue())
         return status
-    
+
     def executeQuery(self, query_num, stmt):
         pr = cProfile.Profile()
         pr.enable()
@@ -139,7 +155,7 @@ class NormalizedSQLiteBackend(NormalizedBackend):
 
     def normalized_put(self, ins_name, content):
         return self.get_ins(ins_name).insert(content).execute()
-    
+
     def instr_put(self, ins_name, content, query_num):
         pr = cProfile.Profile()
         pr.enable()
@@ -153,14 +169,18 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             f.write(str(sql))
             f.write(s.getvalue())
         return status
-        
 
-    def normalized_get(self,ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
-        sql = self.build_sql(ins_name, "query", id, item_id, asset_id, timestamp, name, version, sub_schema)
+    def normalized_get(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None,
+                       timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None,
+                       sub_schema: {} = None):
+        sql = self.build_sql(ins_name=ins_name, sql_type="query", id=id, item_id=None, asset_id=asset_id,
+                             timestamp=timestamp, name=name, version=version, sub_schema=sub_schema)
         print(sql)
         return list(sql.dicts())
-    
-    def instr_get(self,ins_name, query_num, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+
+    def instr_get(self, ins_name, query_num, id: (int, ...) = None, item_id: (int, ...) = None,
+                  asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None,
+                  version: (int, int) = None, sub_schema: {} = None):
         pr = cProfile.Profile()
         pr.enable()
         sql = self.build_sql(ins_name, "query", id, item_id, asset_id, timestamp, name, version, sub_schema)
@@ -174,12 +194,17 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             f.write(s.getvalue())
         return query_res
 
-    def normalized_delete(self,ins_name, id: (int, ...) = None,  item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
-        sql = self.build_sql(ins_name, "delete", id, item_id, asset_id, timestamp, name, version)
+    def normalized_delete(self, ins_name, id: (int, ...) = None, item_id: (int, ...) = None,
+                          asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None,
+                          version: (int, int) = None):
+        sql = self.build_sql(ins_name=ins_name, sql_type="delete", id=id, item_id=None, asset_id=asset_id,
+                             timestamp=timestamp, name=name, version=version)
         print(sql)
         return sql.execute()
 
-    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None,
+                  asset_id: (int, ...) = None, user_id=None, timestamp: (str, str) = None, name: (str, ...) = None,
+                  version: (int, int) = None, sub_schema: {} = None):
 
         global sql
         ins = self.get_ins(ins_name)
@@ -192,10 +217,10 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             kd = ins.schema.tree().alias('tree')
             sql = sql.from_(ins, kd)
             expr = False
-            for k,v in sub_schema.items():
+            for k, v in sub_schema.items():
                 if k == "*":
-                    for wildcard_v in v:
-                        expr |= (kd.c.value == wildcard_v)
+                    # for wildcard_v in v:
+                    expr |= (kd.c.value == v)
                 elif v == "*":
                     expr |= (kd.c.key == k)
                 else:
@@ -216,6 +241,11 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             expr = False
             for i in asset_id:
                 expr |= (ins.asset_id == i)
+            sql = sql.where(expr)
+        if user_id is not None:
+            expr = False
+            for i in user_id:
+                expr |= (ins.user_id == i)
             sql = sql.where(expr)
         if timestamp is not None:
             expr = True
@@ -244,15 +274,15 @@ class NormalizedSQLiteBackend(NormalizedBackend):
 
     def create_tables(self):
         with database:
-            #add following to below if needed later: Item,
+            # add following to below if needed later: Item,
             database.create_tables([UserType, User, AssetType,
                                     Asset, WhoProfile, WhatProfile,
                                     HowProfile, WhyProfile, WhenProfile,
-                                    SourceType, Source, WhereProfile, 
+                                    SourceType, Source, WhereProfile,
                                     Action, RelationshipType, Relationship,
                                     Asset_Relationships])
             # Item.__schema.create_foreign_key(Item.user)
-            #self.ins_map["Item"] = Item
+            # self.ins_map["Item"] = Item
             self.ins_map["UserType"] = UserType
             self.ins_map["User"] = User
             self.ins_map["AssetType"] = AssetType
@@ -275,6 +305,7 @@ class NormalizedSQLiteBackend(NormalizedBackend):
             self.profile_ins_map["WhyProfile"] = WhyProfile
             self.profile_ins_map["WhenProfile"] = WhenProfile
 
+
 class DataVaultSQLiteBackend(DataVaultBackend):
 
     def __init__(self, backend_path="catserv.db"):
@@ -283,7 +314,7 @@ class DataVaultSQLiteBackend(DataVaultBackend):
         self.profile_ins_map = {}
         database.init(backend_path)
         self.create_tables()
-    
+
     def execute(self, query_num, stmt):
         pr = cProfile.Profile()
         pr.enable()
@@ -296,7 +327,7 @@ class DataVaultSQLiteBackend(DataVaultBackend):
             f.write(str(sql))
             f.write(s.getvalue())
         return status
-    
+
     def executeQuery(self, query_num, stmt):
         pr = cProfile.Profile()
         pr.enable()
@@ -313,12 +344,15 @@ class DataVaultSQLiteBackend(DataVaultBackend):
     def datavault_put(self, ins_name, content):
         return self.get_ins(ins_name).insert(content).execute()
 
-    def datavault_get(self,ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def datavault_get(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None,
+                      name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
         sql = self.build_sql(ins_name, "query", id, None, asset_id, timestamp, name, version, sub_schema)
         print(sql)
         return list(sql.dicts())
-    
-    def instr_get(self,ins_name, query_num, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+
+    def instr_get(self, ins_name, query_num, id: (int, ...) = None, asset_id: (int, ...) = None,
+                  timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None,
+                  sub_schema: {} = None):
         pr = cProfile.Profile()
         pr.enable()
         sql = self.build_sql(ins_name, "query", id, None, asset_id, timestamp, name, version, sub_schema)
@@ -332,12 +366,15 @@ class DataVaultSQLiteBackend(DataVaultBackend):
             f.write(s.getvalue())
         return query_res
 
-    def datavault_delete(self,ins_name, id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
+    def datavault_delete(self, ins_name, id: (int, ...) = None, asset_id: (int, ...) = None,
+                         timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None):
         sql = self.build_sql(ins_name, "delete", id, None, asset_id, timestamp, name, version)
         print(sql)
         return sql.execute()
 
-    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None, asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None, version: (int, int) = None, sub_schema: {} = None):
+    def build_sql(self, ins_name, sql_type, id: (int, ...) = None, item_id: (int, ...) = None,
+                  asset_id: (int, ...) = None, timestamp: (str, str) = None, name: (str, ...) = None,
+                  version: (int, int) = None, sub_schema: {} = None):
 
         global sql
         ins = self.get_ins(ins_name)
@@ -350,7 +387,7 @@ class DataVaultSQLiteBackend(DataVaultBackend):
             kd = ins.schema.tree().alias('tree')
             sql = sql.from_(ins, kd)
             expr = False
-            for k,v in sub_schema.items():
+            for k, v in sub_schema.items():
                 if k == "*":
                     for wildcard_v in v:
                         expr |= (kd.c.value == wildcard_v)
@@ -405,7 +442,7 @@ class DataVaultSQLiteBackend(DataVaultBackend):
             database.create_tables([H_UserType, H_User, H_AssetType,
                                     H_Asset, H_WhoProfile, H_WhatProfile,
                                     H_HowProfile, H_WhyProfile, H_WhenProfile,
-                                    H_SourceType, H_Source, H_WhereProfile, 
+                                    H_SourceType, H_Source, H_WhereProfile,
                                     H_Action, H_RelationshipType, H_Relationship,
                                     L_UserTypeLink, L_AssetTypeLink, L_Asset_WhoProfile,
                                     L_WhoProfileUser, L_Asset_HowProfile, L_Asset_WhyProfile,
