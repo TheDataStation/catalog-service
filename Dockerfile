@@ -25,3 +25,5 @@ RUN make create-environment
 # conda environment, but more amenable to Dockerfile
 ENV PATH=/conda/envs/ds-catalog-service/bin:$PATH
 
+RUN pip install .
+RUN make test
