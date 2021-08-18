@@ -19,7 +19,7 @@ inplace:
 	$(PYTHON) setup.py build_ext -i
 
 test-code: in
-	$(PYTEST) --showlocals -v ds_catalog_service --durations=20
+	$(PYTEST) --showlocals -v tests/ --durations=20
 
 test: test-code
 
